@@ -13,17 +13,30 @@ import java.util.logging.Logger;
  */
 public class PrincipalCli extends JFrame {
 
-    private final int PORT = 12345;
+    private final int PORT_SERVER = 12345;
+    private DatagramSocket socketCliente;
 
-    /**
-     * Creates new form Principal1
-     */
     public PrincipalCli() {
         initComponents();
+        try {
+            // El cliente usa un puerto aleatorio disponible
+            this.socketCliente = new DatagramSocket();
+            this.setTitle("Cliente Port: " + socketCliente.getLocalPort());
+            this.mensajesTxt.append("Mi puerto es: " + socketCliente.getLocalPort() + "\n");
 
-        this.btEnviar.setEnabled(true);
-        this.mensajesTxt.setEditable(false);
+            // HILO PARA RECIBIR
+            new Thread(() -> {
+                try {
+                    while (true) {
+                        byte[] buffer = new byte[1024];
+                        DatagramPacket recibo = new DatagramPacket(buffer, buffer.length);
+                        socketCliente.receive(recibo);
+                        mensajesTxt.append(MiDatagrama.obtenerMensaje(recibo) + "\n");
+                    }
+                } catch (IOException e) { e.printStackTrace(); }
+            }).start();
 
+        } catch (SocketException e) { e.printStackTrace(); }
     }
 
     /**
@@ -118,24 +131,14 @@ public class PrincipalCli extends JFrame {
     private void enviarMensaje() {
         String ip = "127.0.0.1";
         String mensaje = mensajeTxt.getText();
-        if (mensaje.isEmpty()){
-            JOptionPane.showMessageDialog(this,"No hay mensaje para enviar");
-            return ;
-        }
-        DatagramPacket mensajeDG = MiDatagrama.crearDataG(ip, PORT, mensaje);
-        File f = new File("c:\\aca\\","elarchivo.*" );
+        if (mensaje.isEmpty()) return;
+
         try {
-            DatagramSocket canal = new DatagramSocket();
-            canal.send(mensajeDG);
-            mensajesTxt.append("Mensaje enviado \n");
-
-
-        } catch (SocketException ex) {
-            Logger.getLogger(PrincipalCli.class.getName()).log(Level.SEVERE, null, ex);
+            DatagramPacket paquete = MiDatagrama.crearDataG(ip, PORT_SERVER, mensaje);
+            socketCliente.send(paquete);
+            mensajeTxt.setText(""); // Limpiar campo
         } catch (IOException ex) {
             Logger.getLogger(PrincipalCli.class.getName()).log(Level.SEVERE, null, ex);
         }
-
-
     }
 }
